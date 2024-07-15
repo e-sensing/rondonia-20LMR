@@ -1,0 +1,33 @@
+Package: rondonia20LMR
+Type: Package
+Title: A data set to test ML/DL algorithms for deforestation mapping
+Version: 0.0.2
+Date: 2023-11-20
+Authors@R: c(person('Gilberto', 'Camara', role = c('aut', 'cre'), email = 'gilberto.camara@inpe.br'),
+             person('Felipe', 'Souza', role = c('aut'), email = 'filipe.souza@inpe.br'))
+Maintainer: Gilberto Camara <gilberto.camara@inpe.br>
+Description: This project contains a data cube to test ML/DL algorithms 
+    for mapping tropical deforestation. It contains a data cube and a set of samples.
+    The data cube is a regularized set of Sentinel-2 images for tile 20LMR, 
+    covering a part of the Rondonia state in the Brazilian Amazonia. 
+    The cube contains images from bands B02, B03, B04, B05, B07, 
+    B8A, B08, B11, B12 from 2022-01-05 to 2022-12-23 in 16-day intervals.
+    The samples contain time series for 792 selected locations which are assigned to 
+    one of the classes "Clear_Cut_Bare_Soil", "Clear_Cut_Burned_Area", 
+    "Mountainside_Forest", "Forest", "Riparian_Forest", 
+    "Clear_Cut_Vegetation", "Water", "Wetland", and "Seasonally_Flooded". 
+    This version requires sits 1.4.0.
+Depends: R (>= 4.0)
+URL: https://github.com/e-sensing/sitsdata/
+BugReports: https://github.com/e-sensing/sitsdata/issues
+License: GPL-2 | file LICENSE
+Imports:
+    tibble,
+    sits
+ByteCompile: true
+LazyData: true
+Encoding: UTF-8
+Collate:
+    'data.R'
+    'demo_pixel_classification.R'
+RoxygenNote: 7.2.3

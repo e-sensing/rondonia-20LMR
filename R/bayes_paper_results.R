@@ -1,10 +1,9 @@
-# set the data directory
-proj_dir <- "/data/projects/rondonia20LMR/"
+
 # retrieve the data cube
 cube_20LMR <- sits_cube(
      source = "MPC",
      collection = "SENTINEL-2-L2A",
-     data_dir = paste0(proj_dir, "inst/extdata/images")
+     data_dir = "./inst/extdata/images"
 )
 # retrieve the samples 
 samples <- readRDS(paste0(proj_dir, "inst/extdata/samples/deforestation_samples_v18.rds"))

@@ -14,6 +14,45 @@ probs_cube <- sits_cube(
         labels = labels,
         bands = "probs"
 )
+# get a variance cube in 9 x 9 window
+var_cube_9x9 <- sits_variance(
+     cube = probs_cube,
+     window_size = 9,
+     neigh_fraction = 0.5,
+     memsize = 4,
+     multicores = 12,
+     output_dir = "./inst/extdata/variance/",
+     version = "9x9_window"
+)
+saveRDS(var_cube_9x9, file = "./inst/extdata/results/var_cube_9x9.rds")
+# bayes smoothing
+bayes_cube_9x9 <- sits_smooth(
+     cube = probs_cube,
+     window_size = 9,
+     smoothness = c(
+          "Clear_Cut_Bare_Soil" = 18,
+          "Clear_Cut_Burned_Area" = 17,
+          "Clear_Cut_Vegetation" = 12,
+          "Forest" = 20,
+          "Mountainside_Forest" = 15,
+          "Riparian_Forest" = 35,
+          "Seasonally_Flooded" = 18,
+          "Water" = 5,
+          "Wetland" = 16
+     ),
+     multicores = 4,
+     memsize = 12,
+     output_dir = "inst/extdata/bayes",
+     version = "window_9x9"
+)
+
+map_bayes_9x9 <- sits_label_classification(
+     cube = bayes_cube_9x9,
+     multicores = 4,
+     memsize = 12,
+     output_dir = "inst/extdata/class-bayes",
+     version = "window_9x9"
+)
 # produce uncertainty cube using entropy
 uncert_cube_entropy <- sits_uncertainty(
         cube = probs_cube,
@@ -65,6 +104,12 @@ map_bilat <- sits_cube(
      bands = "class",
      version = "bilat"
 )
+# choose a sampling design
+sampling_design <- sits_sampling_design(
+     cube = map_bayes_9x9,
+     expected_ua = 0.85
+)
+
 
 # save samples with high uncertainty
 saveRDS(uncert_samples_500, "./inst/extdata/results/uncert_samples_500.rds")

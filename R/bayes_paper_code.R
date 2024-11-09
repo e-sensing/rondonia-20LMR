@@ -1,3 +1,29 @@
+# Code to reproduce the results of paper 
+# "Bayesian Inference for Post-processing of Remote Sensing Image Classification"
+# 
+# Before running the code, please do the following steps:
+# 
+# 1. Install the sits package from CRAN 
+# If there are problems with the installation, please follow the instructions in:
+# <https://e-sensing.github.io/sitsbook/setup.html>.
+# 
+if (!requireNamespace("sits", quietly = TRUE)) {
+        stop("Please install package sits\n",
+             "Please call install.packages('sits')",
+             call. = FALSE
+        )
+}
+# 
+# load the sitsdata library
+if (!requireNamespace("sitsdata", quietly = TRUE)) {
+        stop("Please install package sitsdata\n",
+             "Please call devtools::install_github('e-sensing/sitsdata')",
+             call. = FALSE
+        )
+}
+
+
+
 library(sits)
 # retrieve the data cube
 cube_20LMR <- sits_cube(
@@ -240,3 +266,6 @@ classes_maps_diff2 <- dplyr::filter(
 classes_maps_diff_600 <- dplyr::sample_n(classes_maps_diff2, size = 600)
 # saveRDS
 save(classes_maps_diff_600, file = "./inst/extdata/results/classes_maps_diff_600.rds")
+
+# retrieve labelled samples 
+sf_points <- sf::st_read("./inst/extdata/results/labelled_conflicting_points.gpkg")

@@ -1,8 +1,8 @@
 Package: rondonia20LMR
 Type: Package
 Title: A data set to test ML/DL algorithms for deforestation mapping
-Version: 0.0.2
-Date: 2023-11-20
+Version: 0.0.3
+Date: 2024-11-09
 Authors@R: c(person('Gilberto', 'Camara', role = c('aut', 'cre'), email = 'gilberto.camara@inpe.br'),
              person('Felipe', 'Souza', role = c('aut'), email = 'filipe.souza@inpe.br'))
 Maintainer: Gilberto Camara <gilberto.camara@inpe.br>
@@ -28,6 +28,7 @@ ByteCompile: true
 LazyData: true
 Encoding: UTF-8
 Collate:
+    'bayes_paper.code'
     'data.R'
     'demo_pixel_classification.R'
 RoxygenNote: 7.2.3

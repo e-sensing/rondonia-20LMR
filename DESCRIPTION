@@ -28,7 +28,7 @@ ByteCompile: true
 LazyData: true
 Encoding: UTF-8
 Collate:
-    'bayes_paper.code'
+    'bayes_paper_code.R'
     'data.R'
     'demo_pixel_classification.R'
 RoxygenNote: 7.2.3

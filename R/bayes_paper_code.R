@@ -52,7 +52,12 @@ samples <- readRDS(
                "/inst/extdata/samples/deforestation_samples_v18.rds"))
 # remove rare classes which do not exist in the tile
 samples <- dplyr::filter(samples, label != "Mountainside_Forest")
-# tune tempCNN 
+
+# the following two functions are included for completeness
+# to save time, users can jump to line 81 below where one 
+# can recover a trained TempCNN model
+
+# tune tempCNN to find adequate hyperparameters
 tuning_cnn <- sits_tuning(
      samples,
      params = sits_tuning_hparams(
@@ -64,13 +69,16 @@ tuning_cnn <- sits_tuning(
      multicores = 6,
      progress = TRUE
 )
-# build tempCNN model
+# build tempCNN model (included for completeness)
 tcnn_model <- sits_train(
      samples,
      ml_method = sits_tempcnn(
           opt_hparams = list(lr = 0.00246)   
      )
 )
+#
+# load a saved TempCNN model
+tcnn_model <- readRDS(paste0(base_dir, "/inst/extdata/models/tcnn_model.rds"))
 # build the probabilities
 probs_cube <- sits_classify(
      data = cube_20LMR,

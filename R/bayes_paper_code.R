@@ -13,26 +13,43 @@ if (!requireNamespace("sits", quietly = TRUE)) {
              call. = FALSE
         )
 }
+#
+# 2. Install the bayesEO package from CRAN 
 # 
-# load the sitsdata library
-if (!requireNamespace("sitsdata", quietly = TRUE)) {
-        stop("Please install package sitsdata\n",
-             "Please call devtools::install_github('e-sensing/sitsdata')",
+if (!requireNamespace("bayesEO", quietly = TRUE)) {
+        stop("Please install package bayesEO\n",
+             "Please call install.packages('bayesEO')",
              call. = FALSE
         )
 }
+#
+# 3. Install the git lfs (large file storage support)
+#
+# Follow the instructions at https://github.com/git-lfs/git-lfs
 
+#
+# 4. Clone the rondonia20LMR package from e-sensing github repository
+# to a local directory ($HOME in what follows)
+# In a terminal, run 
+# % cd /mydir
+# % git-lfs clone https://github.com/e-sensing/rondonia20LMR.git
+# 
+# 5. Set the base directory to where you have installed the "rondonia20LMR"
+# repository ($HOME/rondonia20LMR in what follows)
+base_dir <- paste0(Sys.getenv("HOME"), "/rondonia20LMR")
 
-
+# load the required packages 
 library(sits)
 # retrieve the data cube
 cube_20LMR <- sits_cube(
      source = "MPC",
      collection = "SENTINEL-2-L2A",
-     data_dir = "./inst/extdata/images"
+     data_dir = paste0(base_dir,"/inst/extdata/images")
 )
-# retrieve the samples 
-samples <- readRDS("./inst/extdata/samples/deforestation_samples_v18.rds")
+# retrieve the training samples 
+samples <- readRDS(
+        paste0(base_dir, 
+               "/inst/extdata/samples/deforestation_samples_v18.rds"))
 # remove rare classes which do not exist in the tile
 samples <- dplyr::filter(samples, label != "Mountainside_Forest")
 # tune tempCNN 
@@ -58,9 +75,9 @@ tcnn_model <- sits_train(
 probs_cube <- sits_classify(
      data = cube_20LMR,
      ml_model = tcnn_model,
-     multicores = 1,
-     memsize = 2,
-     output_dir = "./inst/extdata/probs",
+     multicores = 2,
+     memsize = 4,
+     output_dir = paste0(base_dir,"/inst/extdata/probs"),
      progress = TRUE
 )
 # generate a unsmoothed map
@@ -68,8 +85,8 @@ map_no_smooth <- sits_label_classification(
      cube = probs_cube,
      multicores = 4,
      memsize = 12,
-     output_dir = "./inst/extdata/class-no-smooth",
-     version = "no_smooth"
+     output_dir = paste0(base_dir,"/inst/extdata/class-orig"),
+     version = "orig"
 )
 # calculate variances
 var_cube <- sits_variance(
@@ -78,12 +95,12 @@ var_cube <- sits_variance(
      neigh_fraction = 0.5,
      multicores = 4,
      memsize = 12,
-     output_dir = "./inst/extdata/variance"
+     output_dir = paste0(base_dir,"/inst/extdata/variance")
 )
 # print variance values
 variances <- summary(var_cube)
 # save variances
-saveRDS(variances, "./inst/extdata/results/variances.rds")
+saveRDS(variances, paste0(base_dir,"/inst/extdata/results/variances.rds"))
 # bayesian smoothing
 bayes_cube <- sits_smooth(
      cube = probs_cube,
@@ -100,27 +117,27 @@ bayes_cube <- sits_smooth(
      ),
      multicores = 4,
      memsize = 16,
-     output_dir = "./inst/extdata/bayes"
+     output_dir = paste0(base_dir,"/inst/extdata/bayes")
 )
 # bayes classification 
 bayes_class <- sits_label_classification(
      cube = bayes_cube,
      multicores = 4,
      memsize = 16,
-     output_dir = "./inst/extdata/class-bayes",
+     output_dir = paste0(base_dir,"/inst/extdata/class-bayes"),
      version = "bayes"
 )
 # smooth using gaussian methods
 library(bayesEO)
 # Probs filename
 probs_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_v1.tif"
-probs_file <- paste0("./inst/extdata/probs/", probs_filename)
+probs_file <- paste0(base_dir,"/inst/extdata/probs/", probs_filename)
 
 # Probs labels
 labels <- sits_labels(samples)
 names(labels) <- c(1:length(labels))
 # define output directory
-output_dir <- paste0("./inst/extdata/gaussian/")
+output_dir <- paste0(base_dir,"/inst/extdata/gaussian/")
 
 # read probs file
 probs_data <- bayesEO::bayes_read_probs(
@@ -136,7 +153,7 @@ probs_gaussian <- bayesEO::gaussian_smooth(
 
 # define output directory
 gauss_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_gauss.tif"
-gauss_file <- paste0("./inst/extdata/gaussian/", gauss_filename)
+gauss_file <- paste0(base_dir,"/inst/extdata/gaussian/", gauss_filename)
 # save data
 terra::writeRaster(
      x        = probs_gaussian,
@@ -159,7 +176,7 @@ terra::writeRaster(
 gauss_probs_cube <- sits_cube(
      source = "MPC",
      collection = "SENTINEL-2-L2A",
-     data_dir =  "./inst/extdata/gaussian/",
+     data_dir =  paste0(base_dir,"/inst/extdata/gaussian/"),
      bands = "probs",
      labels = labels,
      version = "gauss"
@@ -169,7 +186,7 @@ gauss_map <- sits_label_classification(
      cube = gauss_probs_cube,
      memsize = 16,
      multicores = 4,
-     output_dir = "./inst/extdata/class-gaussian/",
+     output_dir = paste0(base_dir,"/inst/extdata/class-gaussian/"),
      version = "gauss"
 )
 # smooth bilateral
@@ -182,7 +199,7 @@ probs_bilateral <- bayesEO::bilateral_smooth(
 
 # define output directory
 bilat_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_bilat.tif"
-bilat_file <- paste0("./inst/extdata/bilateral/", bilat_filename)
+bilat_file <- paste0(base_dir, "./inst/extdata/bilateral/", bilat_filename)
 # save data
 terra::writeRaster(
      x        = probs_bilateral,
@@ -205,7 +222,7 @@ terra::writeRaster(
 bilat_probs_cube <- sits_cube(
      source = "MPC",
      collection = "SENTINEL-2-L2A",
-     data_dir = "./inst/extdata/bilateral/",
+     data_dir = paste0(base_dir,"/inst/extdata/bilateral/"),
      bands = "probs",
      labels = labels,
      version = "bilat"
@@ -215,7 +232,7 @@ bilat_map <- sits_label_classification(
      cube = bilat_probs_cube,
      memsize = 64,
      multicores = 16,
-     output_dir = "./inst/extdata/class-bilat/",
+     output_dir = paste0(base_dir,"/inst/extdata/class-bilat/"),
      version = "bilat"
 )
 # generate uncertainty cube
@@ -224,7 +241,7 @@ uncert_cube <- sits_uncertainty(
      type = "entropy",
      memsize = 16,
      multicores = 4,
-     output_dir = "./inst/extdata/uncert/"
+     output_dir = paste0(base_dir,"/inst/extdata/uncert/")
 )
 # generate data points with high uncertainty
 uncert_samples <- sits_uncertainty_sampling(
@@ -264,8 +281,10 @@ classes_maps_diff2 <- dplyr::filter(
 )
 # sample 600 points
 classes_maps_diff_600 <- dplyr::sample_n(classes_maps_diff2, size = 600)
-# saveRDS
-save(classes_maps_diff_600, file = "./inst/extdata/results/classes_maps_diff_600.rds")
+# save 600 points
+save(classes_maps_diff_600, file = paste0(base_dir, "/inst/extdata/results/classes_maps_diff_600.rds"))
 
-# retrieve labelled samples 
-sf_points <- sf::st_read("./inst/extdata/results/labelled_conflicting_points.gpkg")
+# retrieve labelled samples with conflicting points
+# 
+labelled_samples <- paste0(base_dir, "/inst/extdata/results/labelled_conflicting_points.gpkg")
+sf_points <- sf::st_read(labelled_samples)

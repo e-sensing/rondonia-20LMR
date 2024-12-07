@@ -44,9 +44,16 @@ License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 
 ## Scripts to produce deforestation maps
 
-The directory `/scipts` contains R scripts that use the `sits` package for mapping deforested area in the image data cube.  For description of how these scripts work, please see chapter ["Introduction"](https://e-sensing.github.io/sitsbook/introduction.html) in the `sits` [reference book](https://e-sensing.github.io/sitsbook/index.html).
+The directory `/R` contains R scripts that use the `sits` package for mapping deforested area in the image data cube.  For description of how these scripts work, please see chapter ["Introduction"](https://e-sensing.github.io/sitsbook/introduction.html) in the `sits` [reference book](https://e-sensing.github.io/sitsbook/index.html).
 
 To run these scripts, you need to install the `sits` package. Please see the instructions in Chapter ["Setup"](https://e-sensing.github.io/sitsbook/setup.html) of the on-line book.
+
+The script `sits_classification.R` shows how to use the data cube and the training samples provided in the repository to do a satellite image time series classification.
+
+## Reproducible code for paper on Bayesian smoothing
+
+This repository contains data and code to reproduce the paper ["Bayesian Inference for Post-Processing of Remote-Sensing Image Classification"](https://www.mdpi.com/2072-4292/16/23/4572). The code to reproduce the results presented in the paper is available in directory `/scripts` and is called `bayes_paper_code.R`. 
+
 
 License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
 

@@ -46,6 +46,12 @@ cube_20LMR <- sits_cube(
      collection = "SENTINEL-2-L2A",
      data_dir = paste0(base_dir,"/inst/extdata/images")
 )
+# plot color composite - figure 1 in the paper
+plot(cube_20LMR, 
+     red = "B11", 
+     green = "B8A",
+     blue = "B02", 
+     date = "2022-07-16")
 # retrieve the training samples 
 samples <- readRDS(
         paste0(base_dir, 
@@ -78,22 +84,50 @@ tcnn_model <- sits_train(
 )
 #
 # load a saved TempCNN model
-tcnn_model <- readRDS(paste0(base_dir, "/inst/extdata/models/tcnn_model.rds"))
-# build the probabilities
+tcnn_model <- readRDS(paste0(base_dir, 
+                             "/inst/extdata/models/tcnn_model.rds"))
+
+# define directory to store probability maps
+output_dir <- paste0(base_dir,"/results_paper")
+# create directory if it does not exist
+if (!dir.exists(output_dir))
+        dir.create(output_dir)
+
+# build the probabilities (takes a long time in a small machine)
 probs_cube <- sits_classify(
      data = cube_20LMR,
      ml_model = tcnn_model,
-     multicores = 2,
-     memsize = 4,
-     output_dir = paste0(base_dir,"/inst/extdata/probs"),
+     multicores = 8,
+     memsize = 16,
+     output_dir = output_dir,
      progress = TRUE
 )
+# Plot the probabilities for classes "Clear_Cut_Bare_Soil" and "Forest"
+# for a selected region of the tile
+# (Figure 2 - top)
+plot(probs_cube,
+     labels = c("Clear_Cut_Bare_Soil", "Forest"),
+     roi = c(lon_min = -63.6, lon_max = -63.45, 
+             lat_min = -8.7, lat_max = -8.55),
+     palette = "Greens"
+)
+# Plot the probabilities for 
+# classes "Seasonally_Flooded" and "Water"
+# for a selected region of the tile
+# (Figure 2 - bottom)
+plot(probs_cube,
+     labels = c("Seasonally_Flooded", "Water"),
+     roi = c(lon_min = -63.6, lon_max = -63.45, 
+             lat_min = -8.7, lat_max = -8.55),
+     palette = "Greens"
+)
+
 # generate a unsmoothed map
 map_no_smooth <- sits_label_classification(
      cube = probs_cube,
      multicores = 4,
      memsize = 12,
-     output_dir = paste0(base_dir,"/inst/extdata/class-orig"),
+     output_dir = output_dir,
      version = "orig"
 )
 # calculate variances
@@ -103,12 +137,12 @@ var_cube <- sits_variance(
      neigh_fraction = 0.5,
      multicores = 4,
      memsize = 12,
-     output_dir = paste0(base_dir,"/inst/extdata/variance")
+     output_dir = output_dir
 )
 # print variance values
 variances <- summary(var_cube)
-# save variances
-saveRDS(variances, paste0(base_dir,"/inst/extdata/results/variances.rds"))
+# print variances 
+variances
 # bayesian smoothing
 bayes_cube <- sits_smooth(
      cube = probs_cube,
@@ -125,27 +159,40 @@ bayes_cube <- sits_smooth(
      ),
      multicores = 4,
      memsize = 16,
-     output_dir = paste0(base_dir,"/inst/extdata/bayes")
+     output_dir = output_dir,
+     version = "bayes"
 )
 # bayes classification 
 bayes_class <- sits_label_classification(
      cube = bayes_cube,
      multicores = 4,
      memsize = 16,
-     output_dir = paste0(base_dir,"/inst/extdata/class-bayes"),
+     output_dir = output_dir,
      version = "bayes"
+)
+
+# plot original non-smoothed map
+# (Figure 3 - top)
+plot(map_no_smooth, 
+     roi = c(lon_min = -63.6, lon_max = -63.30, 
+             lat_min = -8.70, lat_max = -8.50),
+     legend_position = "inside"
+)
+# plot bayes-smoothed map 
+plot(bayes_class, 
+     roi = c(lon_min = -63.6, lon_max = -63.30, 
+             lat_min = -8.70, lat_max = -8.50),
+     legend_position = "inside"
 )
 # smooth using gaussian methods
 library(bayesEO)
 # Probs filename
 probs_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_v1.tif"
-probs_file <- paste0(base_dir,"/inst/extdata/probs/", probs_filename)
+probs_file <- paste0(output_dir, probs_filename)
 
 # Probs labels
 labels <- sits_labels(samples)
 names(labels) <- c(1:length(labels))
-# define output directory
-output_dir <- paste0(base_dir,"/inst/extdata/gaussian/")
 
 # read probs file
 probs_data <- bayesEO::bayes_read_probs(
@@ -161,7 +208,7 @@ probs_gaussian <- bayesEO::gaussian_smooth(
 
 # define output directory
 gauss_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_gauss.tif"
-gauss_file <- paste0(base_dir,"/inst/extdata/gaussian/", gauss_filename)
+gauss_file <- paste0(output_dir, gauss_filename)
 # save data
 terra::writeRaster(
      x        = probs_gaussian,
@@ -178,13 +225,14 @@ terra::writeRaster(
                "BLOCKYSIZE=512"
           )
      ),
-     NAflag = 1
+     NAflag = 1,
+     overwrite = TRUE
 )
 # recover the cube as a sits structure
 gauss_probs_cube <- sits_cube(
      source = "MPC",
      collection = "SENTINEL-2-L2A",
-     data_dir =  paste0(base_dir,"/inst/extdata/gaussian/"),
+     data_dir =  output_dir,
      bands = "probs",
      labels = labels,
      version = "gauss"
@@ -194,7 +242,7 @@ gauss_map <- sits_label_classification(
      cube = gauss_probs_cube,
      memsize = 16,
      multicores = 4,
-     output_dir = paste0(base_dir,"/inst/extdata/class-gaussian/"),
+     output_dir = output_dir,
      version = "gauss"
 )
 # smooth bilateral
@@ -207,7 +255,7 @@ probs_bilateral <- bayesEO::bilateral_smooth(
 
 # define output directory
 bilat_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_bilat.tif"
-bilat_file <- paste0(base_dir, "./inst/extdata/bilateral/", bilat_filename)
+bilat_file <- paste0(output_dir, bilat_filename)
 # save data
 terra::writeRaster(
      x        = probs_bilateral,
@@ -224,13 +272,14 @@ terra::writeRaster(
                "BLOCKYSIZE=512"
           )
      ),
-     NAflag = 1
+     NAflag = 1,
+     overwrite = TRUE
 )
 # recover the cube as a sits structure
 bilat_probs_cube <- sits_cube(
      source = "MPC",
      collection = "SENTINEL-2-L2A",
-     data_dir = paste0(base_dir,"/inst/extdata/bilateral/"),
+     data_dir = output_dir,
      bands = "probs",
      labels = labels,
      version = "bilat"
@@ -240,7 +289,7 @@ bilat_map <- sits_label_classification(
      cube = bilat_probs_cube,
      memsize = 64,
      multicores = 16,
-     output_dir = paste0(base_dir,"/inst/extdata/class-bilat/"),
+     output_dir = output_dir,
      version = "bilat"
 )
 # generate uncertainty cube
@@ -249,7 +298,7 @@ uncert_cube <- sits_uncertainty(
      type = "entropy",
      memsize = 16,
      multicores = 4,
-     output_dir = paste0(base_dir,"/inst/extdata/uncert/")
+     output_dir = output_dir
 )
 # generate data points with high uncertainty
 uncert_samples <- sits_uncertainty_sampling(
@@ -294,5 +343,28 @@ save(classes_maps_diff_600, file = paste0(base_dir, "/inst/extdata/results/class
 
 # retrieve labelled samples with conflicting points
 # 
-labelled_samples <- paste0(base_dir, "/inst/extdata/results/labelled_conflicting_points.gpkg")
-sf_points <- sf::st_read(labelled_samples)
+labelled_samples_file <- paste0(base_dir, "/inst/extdata/results/labelled_conflicting_points.gpkg")
+sf_points <- sf::st_read(labelled_samples_file)
+# transform to data.frame
+points <- sf::st_drop_geometry(sf_points)
+# prepare data for accuracy assessment
+
+# Create factor vectors for caret
+unique_ref <- unique(points[["label"]])
+# create a factor for reference values
+ref_fac <- factor(points[["label"]], levels = unique_ref)
+# create factors for predictions from smoothing algorithms
+no_smooth_fac <- factor(points[["no_smooth"]], levels = unique_ref)
+bayes_fac <- factor(points[["bayes"]], levels = unique_ref)
+gauss_fac <- factor(points[["gauss"]], levels = unique_ref)
+bilat_fac <- factor(points[["bilat"]], levels = unique_ref)
+
+
+# Call caret package to measure accuracy
+acc_no_smooth <- caret::confusionMatrix(no_smooth_fac, ref_fac)
+acc_bayes <- caret::confusionMatrix(bayes_fac, ref_fac)
+acc_gauss <- caret::confusionMatrix(gauss_fac, ref_fac)
+acc_bilat <- caret::confusionMatrix(bilat_fac, ref_fac)
+
+class(acc_no_smooth) <- c("sits_accuracy", class(acc_no_smooth))
+class(acc_bayes) <- c("sits_accuracy", class(acc_bayes))

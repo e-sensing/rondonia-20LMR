@@ -93,12 +93,15 @@ output_dir <- paste0(base_dir,"/results_paper")
 if (!dir.exists(output_dir))
         dir.create(output_dir)
 
-# build the probabilities (takes a long time in a small machine)
+# build the probabilities 
+# since it takes a long time in a small machine, we provide 
+# the result precomputed for convenience
+# the results should be instantaneous
 probs_cube <- sits_classify(
      data = cube_20LMR,
      ml_model = tcnn_model,
-     multicores = 8,
-     memsize = 16,
+     multicores = 4,
+     memsize = 12,
      output_dir = output_dir,
      progress = TRUE
 )
@@ -143,7 +146,7 @@ var_cube <- sits_variance(
 variances <- summary(var_cube)
 # print variances 
 variances
-# bayesian smoothing
+# Bayesian smoothing
 bayes_cube <- sits_smooth(
      cube = probs_cube,
      window_size = 9,
@@ -188,7 +191,7 @@ plot(bayes_class,
 library(bayesEO)
 # Probs filename
 probs_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_v1.tif"
-probs_file <- paste0(output_dir, probs_filename)
+probs_file <- file.path(output_dir, probs_filename)
 
 # Probs labels
 labels <- sits_labels(samples)
@@ -199,6 +202,8 @@ probs_data <- bayesEO::bayes_read_probs(
      probs_file = probs_file,
      labels     = labels
 )
+# deal with NA in the data
+probs_data <- terra::ifel(is.na(probs_data), 0, probs_data)
 # smooth probs using gaussian filter
 probs_gaussian <- bayesEO::gaussian_smooth(
      x              = probs_data,
@@ -208,7 +213,7 @@ probs_gaussian <- bayesEO::gaussian_smooth(
 
 # define output directory
 gauss_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_gauss.tif"
-gauss_file <- paste0(output_dir, gauss_filename)
+gauss_file <- file.path(output_dir, gauss_filename)
 # save data
 terra::writeRaster(
      x        = probs_gaussian,
@@ -255,7 +260,7 @@ probs_bilateral <- bayesEO::bilateral_smooth(
 
 # define output directory
 bilat_filename <- "SENTINEL-2_MSI_20LMR_2022-01-05_2022-12-23_probs_bilat.tif"
-bilat_file <- paste0(output_dir, bilat_filename)
+bilat_file <- file.path(output_dir, bilat_filename)
 # save data
 terra::writeRaster(
      x        = probs_bilateral,
@@ -292,6 +297,33 @@ bilat_map <- sits_label_classification(
      output_dir = output_dir,
      version = "bilat"
 )
+
+# compare the original maps with the different kinds of smoothing
+# (figure 4)
+roi_detail <- c(xmin = -63.540, xmax = -63.480,
+                ymin = -8.535, ymax = -8.495)
+
+# plot the non-smoothed map
+plot(map_no_smooth, 
+     roi = roi_detail,
+     legend_position = "inside"
+)
+# plot the map with bayesian smoothing
+plot(bayes_class, 
+     roi = roi_detail,
+     legend_position = "inside"
+)
+# plot the map with gaussian smoothing
+plot(gauss_map, 
+     roi = roi_detail,
+     legend_position = "inside"
+)
+# plot the map with bayesian smoothing
+plot(bilat_map, 
+     roi = roi_detail,
+     legend_position = "inside"
+)
+
 # generate uncertainty cube
 uncert_cube <- sits_uncertainty(
      cube = probs_cube,
@@ -368,3 +400,15 @@ acc_bilat <- caret::confusionMatrix(bilat_fac, ref_fac)
 
 class(acc_no_smooth) <- c("sits_accuracy", class(acc_no_smooth))
 class(acc_bayes) <- c("sits_accuracy", class(acc_bayes))
+
+# Assign names for accuracy assessments
+acc_no_smooth$name <- "no_smooth"
+acc_bayes$name <- "bayes"
+acc_gauss$name <- "gauss"
+acc_bilat$name <- "bilat"
+
+# save accuracies to Excel XLSX file
+xlsx_files <- file.path(output_dir, "accuracies.xlsx")
+accuracies <- list(acc_no_smooth, acc_bayes, acc_gauss, acc_bilat)
+sits_to_xlsx(accuracies, xlsx_files)
+
